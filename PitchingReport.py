@@ -6,6 +6,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle, Polygon, Ellipse, Circle
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+import matplotlib.colors as mcolors
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import seaborn as sns
 import pybaseball as pyb
@@ -17,6 +18,7 @@ import config
 class PitchingReport():
     MLB_TEAMS = config.mlb_teams
     PITCH_COLORS = config.pitch_colors
+    FANGRAPHS_ROW_STATS = config.fangraphs_stats
 
     REPORT_WIDTH = 8.5
     REPORT_HEIGHT = 11
@@ -139,6 +141,19 @@ class PitchingReport():
         df = pd.DataFrame(data=data['data'])
         return df
 
+    def get_color(self, z_score, invert=False, vmin=-3, vmax=3, cmap='coolwarm'):
+        z = max(vmin, min(vmax, z_score))
+        
+        if invert:
+            z = -z
+        
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+        
+        colormap = plt.get_cmap(cmap)
+        rgba = colormap(norm(z))
+        
+        return mcolors.to_hex(rgba)
+
     def plot_season_row(self, pitcher_id: int, season: int, ax: Axes):
         stats = ['IP', 'WHIP', 'ERA', 'FIP', 'K%', 'BB%', 'K-BB%']
         df_fangraphs = self.get_fangraphs_pitching_stats(season = season)
@@ -168,6 +183,25 @@ class PitchingReport():
 
         table_fg = ax.table(cellText=df_formatted.values, colLabels=stats, cellLoc='center',
                         bbox=[0.00, 0.0, 1, 1])
+
+        invert_colors = ['WHIP', 'ERA', 'FIP', 'BB%']
+        for col_idx in range(7):
+            header_cell = table_fg[0, col_idx]
+            stat = stats[col_idx]
+            if stat not in config.fangraphs_stats.keys():
+                continue
+            x = df_fangraphs_pitcher[stat].iloc[0]
+            mean = config.fangraphs_stats[stat]['mean']
+            std = config.fangraphs_stats[stat]['std']
+            z_score = (x - mean) / std
+            value_cell = table_fg[1, col_idx]
+
+            invert = False
+            if stat in invert_colors:
+                invert = True
+
+            color = self.get_color(z_score, invert)
+            value_cell.set_facecolor(color)
         
         # apply color
         for col_idx in range(7):
@@ -180,7 +214,6 @@ class PitchingReport():
         ax.axis('off')
 
     def plot_short_form(self, df: pd.DataFrame, ax: Axes, fontsize=10):
-        # Apply seaborn styling
         sns.set_style("whitegrid")
 
         handedness = df['p_throws'].iloc[0]
@@ -246,7 +279,6 @@ class PitchingReport():
 
         ax.get_legend().remove()
         
-        # Configure grid
         ax.grid(True, alpha=0.3)
 
     def find_usages(self, df):
