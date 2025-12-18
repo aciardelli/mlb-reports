@@ -450,7 +450,7 @@ class PitchingReport():
         
         return df_formatted
 
-    def plot_pitch_table(self, df: pd.DataFrame, ax: Axes):
+    def plot_pitch_table(self, df, ax):
         df = self.get_pitch_groupings(df)
 
         column_mapping = {
@@ -499,8 +499,8 @@ class PitchingReport():
         colWidths = [1.5] + [1] * (len(display_df.columns) - 1)
         
         # Create the table
-        table_plot = ax.table(cellText=display_df.values.tolist(),
-                             colLabels=display_df.columns.tolist(),
+        table_plot = ax.table(cellText=display_df.values,
+                             colLabels=display_df.columns,
                              cellLoc='center', 
                             #  bbox=[0, -0.1, 1, 1],
                              bbox=[0, 0, 1, 1],
@@ -514,6 +514,74 @@ class PitchingReport():
         # Format table
         table_plot.auto_set_font_size(True)
         table_plot.scale(1, 0.5)
+
+        for row_idx in range(len(df['pitch_type'].unique())):
+            # Get pitch type
+            pitch_type_cell = table_plot[row_idx + 1, 0]
+            pitch_type = pitch_type_cell.get_text().get_text()
+            # velo (column 3)
+            velo_mean = config.pitch_type_stats[('velo', 'mean')][pitch_type]
+            velo_std = config.pitch_type_stats[('velo', 'std')][pitch_type]
+            velo_cell = table_plot[row_idx + 1, 3]
+            velo_value = velo_cell.get_text().get_text()
+            velo_float = float(velo_value) if velo_value != '—' else np.nan
+            velo_z_score = (velo_float - velo_mean) / velo_std
+            velo_color = self.get_color(velo_z_score)
+            velo_cell.set_facecolor(velo_color)
+            # ext (column 7)
+            ext_mean = config.pitch_type_stats[('extension', 'mean')][pitch_type]
+            ext_std = config.pitch_type_stats[('extension', 'std')][pitch_type]
+            ext_cell = table_plot[row_idx + 1, 7]
+            ext_value = ext_cell.get_text().get_text()
+            ext_float = float(ext_value) if ext_value != '—' else np.nan
+            ext_z_score = (ext_float - ext_mean) / ext_std
+            ext_color = self.get_color(ext_z_score)
+            ext_cell.set_facecolor(ext_color)
+            # spin (column 6)
+            spin_mean = config.pitch_type_stats[('spin_rate', 'mean')][pitch_type]
+            spin_std = config.pitch_type_stats[('spin_rate', 'std')][pitch_type]
+            spin_cell = table_plot[row_idx + 1, 6]
+            spin_value = spin_cell.get_text().get_text()
+            spin_float = float(spin_value) if spin_value != '—' else np.nan
+            spin_z_score = (spin_float - spin_mean) / spin_std
+            spin_color = self.get_color(spin_z_score)
+            spin_cell.set_facecolor(spin_color)
+            # zone (column 8)
+            zone_mean = config.pitch_type_stats[('zone_pct', 'mean')][pitch_type]
+            zone_std = config.pitch_type_stats[('zone_pct', 'std')][pitch_type]
+            zone_cell = table_plot[row_idx + 1, 8]
+            zone_value = zone_cell.get_text().get_text()
+            zone_float = float(zone_value) if zone_value != '—' else np.nan
+            zone_z_score = (zone_float - zone_mean) / zone_std
+            zone_color = self.get_color(zone_z_score)
+            zone_cell.set_facecolor(zone_color)
+            # chase (column 9)
+            chase_mean = config.pitch_type_stats[('chase_pct', 'mean')][pitch_type]
+            chase_std = config.pitch_type_stats[('chase_pct', 'std')][pitch_type]
+            chase_cell = table_plot[row_idx + 1, 9]
+            chase_value = chase_cell.get_text().get_text()
+            chase_float = float(chase_value) if chase_value != '—' else np.nan
+            chase_z_score = (chase_float - chase_mean) / chase_std
+            chase_color = self.get_color(chase_z_score)
+            chase_cell.set_facecolor(chase_color)
+            # whiff (column 10)
+            whiff_mean = config.pitch_type_stats[('whiff_pct', 'mean')][pitch_type]
+            whiff_std = config.pitch_type_stats[('whiff_pct', 'std')][pitch_type]
+            whiff_cell = table_plot[row_idx + 1, 10]
+            whiff_value = whiff_cell.get_text().get_text()
+            whiff_float = float(whiff_value) if whiff_value != '—' else np.nan
+            whiff_z_score = (whiff_float - whiff_mean) / whiff_std
+            whiff_color = self.get_color(whiff_z_score)
+            whiff_cell.set_facecolor(whiff_color)
+            # z whiff (column 11)
+            zone_whiff_mean = config.pitch_type_stats[('zone_whiff_pct', 'mean')][pitch_type]
+            zone_whiff_std = config.pitch_type_stats[('zone_whiff_pct', 'std')][pitch_type]
+            zone_whiff_cell = table_plot[row_idx + 1, 11]
+            zone_whiff_value = zone_whiff_cell.get_text().get_text()
+            zone_whiff_float = float(zone_whiff_value) if zone_whiff_value != '—' else np.nan
+            zone_whiff_z_score = (zone_whiff_float - zone_whiff_mean) / zone_whiff_std
+            zone_whiff_color = self.get_color(zone_whiff_z_score)
+            zone_whiff_cell.set_facecolor(zone_whiff_color)
 
         # apply color
         for col_idx in range(12):
