@@ -46,8 +46,8 @@ class PitchingReport():
         # Convert the pitch type to a categorical variable
         df['pfx_z'] = df['pfx_z'] * 12
         df['pfx_x'] = df['pfx_x'] * 12
-        return df[df['pitch_type'].notna()]
-
+        return df[df['pitch_type'].notna() & (df['pitch_type'] != 'PO')]
+    
     def get_headshot(self, pitcher_id):
         url = f'https://img.mlbstatic.com/mlb-photos/image/'\
               f'upload/d_people:generic:headshot:67:current.png'\
@@ -410,6 +410,7 @@ class PitchingReport():
             in_zone = ('in_zone', 'sum'),
             out_zone = ('out_zone', 'sum'),
             chase = ('chase', 'sum'),
+            xwoba = ('estimated_woba_using_speedangle', 'mean')
         ).reset_index()
 
         total_pitches = df_group['pitch_count'].sum()
@@ -435,6 +436,7 @@ class PitchingReport():
             'chase_rate': '.1f',
             'whiff_rate': '.1f',
             'zone_whiff_rate': '.1f',
+            'xwoba': '.3f'
         }
 
         # Sort and reset index before formatting
@@ -467,7 +469,8 @@ class PitchingReport():
             'zone_rate': 'Zone%',
             'chase_rate': 'Chase%',
             'whiff_rate': 'Whiff%',
-            'zone_whiff_rate': 'Z-Whiff%'
+            'zone_whiff_rate': 'Z-Whiff%',
+            'xwoba': 'xwOBA'
         }
 
         display_df = df.copy()
@@ -489,7 +492,7 @@ class PitchingReport():
             'Chase%',
             'Whiff%',
             'Z-Whiff%',
-            'Stuff+'
+            'xwOBA'
         ]
         
         # Select only those columns in the right order
@@ -582,9 +585,17 @@ class PitchingReport():
             zone_whiff_z_score = (zone_whiff_float - zone_whiff_mean) / zone_whiff_std
             zone_whiff_color = self.get_color(zone_whiff_z_score)
             zone_whiff_cell.set_facecolor(zone_whiff_color)
-
+            # xwoba (column 12)
+            xwoba_mean = config.pitch_type_stats[('xwoba', 'mean')][pitch_type]
+            xwoba_std = config.pitch_type_stats[('xwoba', 'std')][pitch_type]
+            xwoba_cell = table_plot[row_idx + 1, 12]
+            xwoba_value = xwoba_cell.get_text().get_text()
+            xwoba_float = float(xwoba_value) if xwoba_value != '—' else np.nan
+            xwoba_z_score = (xwoba_float - xwoba_mean) / xwoba_std
+            xwoba_color = self.get_color(xwoba_z_score, invert=True)
+            xwoba_cell.set_facecolor(xwoba_color)
         # apply color
-        for col_idx in range(12):
+        for col_idx in range(13):
             header_cell = table_plot[0, col_idx]
             header_cell.get_text().set_weight('bold')
             header_cell.set_facecolor("#1a1a2e")
@@ -703,4 +714,4 @@ class PitchingReport():
 
         fig.tight_layout()
 
-        plt.show()
+        return fig
