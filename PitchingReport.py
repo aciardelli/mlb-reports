@@ -225,8 +225,7 @@ class PitchingReport():
         sns.set_style("whitegrid")
 
         handedness = df['p_throws'].iloc[0]
-        if handedness == 'R':
-            df['pfx_x'] *= -1
+        df['pfx_x'] *= -1
 
         # get arm angles
         df_angles = df.groupby(['pitch_type']).agg(
