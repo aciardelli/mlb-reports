@@ -18,7 +18,7 @@ import config
 class PitchingReport():
     MLB_TEAMS = config.mlb_teams
     PITCH_COLORS = config.pitch_colors
-    FANGRAPHS_ROW_STATS = config.fangraphs_stats
+    FANGRAPHS_STATS = config.fangraphs_stats
 
     REPORT_WIDTH = 8.5
     REPORT_HEIGHT = 11
@@ -49,6 +49,7 @@ class PitchingReport():
         return df[df['pitch_type'].notna() & (df['pitch_type'] != 'PO')]
     
     def get_headshot(self, pitcher_id):
+        """gets player headshot from mlbstatic"""
         url = f'https://img.mlbstatic.com/mlb-photos/image/'\
               f'upload/d_people:generic:headshot:67:current.png'\
               f'/w_640,q_auto:best/v1/people/{pitcher_id}/headshot/silo/current.png'
@@ -60,6 +61,7 @@ class PitchingReport():
         return img
 
     def get_bio(self, pitcher_id):
+        """gets player information from mlb stats api"""
         url = f"https://statsapi.mlb.com/api/v1/people?personIds={pitcher_id}&hydrate=currentTeam"
 
         data = requests.get(url).json()
@@ -81,11 +83,12 @@ class PitchingReport():
         }
 
     def get_logo(self, team_link):
+        """gets the logo image for the team the player plays for"""
         url_team = 'https://statsapi.mlb.com/' + team_link 
         data_team = requests.get(url_team).json()
 
         team_abb = data_team['teams'][0]['abbreviation']
-        logo_url = config.mlb_teams[team_abb] 
+        logo_url = self.MLB_TEAMS[team_abb] 
         response = requests.get(logo_url)
 
         img = Image.open(BytesIO(response.content))
@@ -93,6 +96,7 @@ class PitchingReport():
         return img
 
     def plot_header(self, pitcher_id: str, ax: Axes):
+        """constructs the header to be plotted"""
         bio = self.get_bio(pitcher_id)
         headshot = self.get_headshot(pitcher_id)
         logo = self.get_logo(bio['team_link'])
@@ -136,12 +140,14 @@ class PitchingReport():
         ax.axis("off")
 
     def get_fangraphs_pitching_stats(self, season: int):
+        """fetches fangraphs pitching stats and returns them as a df"""
         url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=pit&lg=all&season={season}&season1={season}&ind=0&qual=0&type=8&month=0&pageitems=500000"
         data = requests.get(url).json()
         df = pd.DataFrame(data=data['data'])
         return df
 
     def get_color(self, z_score, invert=False, vmin=-3, vmax=3, cmap='coolwarm'):
+        """returns the color given the z score"""
         z = max(vmin, min(vmax, z_score))
         
         if invert:
@@ -154,7 +160,8 @@ class PitchingReport():
         
         return mcolors.to_hex(rgba)
 
-    def plot_season_row(self, pitcher_id: int, season: int, ax: Axes):
+    def plot_stat_line(self, pitcher_id: int, season: int, ax: Axes):
+        """plots the statline pulled from fangraphs for the given date range"""
         stats = ['IP', 'WHIP', 'ERA', 'FIP', 'K%', 'BB%', 'K-BB%']
         df_fangraphs = self.get_fangraphs_pitching_stats(season = season)
 
@@ -188,11 +195,11 @@ class PitchingReport():
         for col_idx in range(7):
             header_cell = table_fg[0, col_idx]
             stat = stats[col_idx]
-            if stat not in config.fangraphs_stats.keys():
+            if stat not in self.FANGRAPHS_STATS.keys():
                 continue
             x = df_fangraphs_pitcher[stat].iloc[0]
-            mean = config.fangraphs_stats[stat]['mean']
-            std = config.fangraphs_stats[stat]['std']
+            mean = self.FANGRAPHS_STATS[stat]['mean']
+            std = self.FANGRAPHS_STATS[stat]['std']
             z_score = (x - mean) / std
             value_cell = table_fg[1, col_idx]
 
@@ -214,6 +221,7 @@ class PitchingReport():
         ax.axis('off')
 
     def plot_short_form(self, df: pd.DataFrame, ax: Axes, fontsize=10):
+        """short form movement plot of the player's pitches'"""
         sns.set_style("whitegrid")
 
         handedness = df['p_throws'].iloc[0]
@@ -233,7 +241,7 @@ class PitchingReport():
             x='pfx_x',
             y='pfx_z',
             hue='pitch_type',
-            palette={p: config.pitch_colors[p]['color'] for p in df['pitch_type'].unique()},
+            palette={p: self.PITCH_COLORS[p]['color'] for p in df['pitch_type'].unique()},
             linewidth=0.1,
             ax=ax,
             s=10
@@ -243,7 +251,7 @@ class PitchingReport():
             rel_x = df_angles.loc[pitch, 'avg_x']
             rel_y = df_angles.loc[pitch, 'avg_y']
 
-            ax.plot([0, rel_x * -20], [0, rel_y * 20],color=config.pitch_colors[pitch]['color'], 
+            ax.plot([0, rel_x * -20], [0, rel_y * 20],color=self.PITCH_COLORS[pitch]['color'], 
                         linestyle='--', 
                         linewidth=2,
                         alpha=1,
@@ -282,6 +290,7 @@ class PitchingReport():
         ax.grid(True, alpha=0.3)
 
     def find_usages(self, df):
+        """finds usage rates based on the count_state being ahead, even, or behind"""
         df_usages = df.groupby(['pitch_type', 'stand', 'count_state']).agg(
            pitch_ct = ('pitch_type', 'count')
         ).reset_index()
@@ -297,6 +306,7 @@ class PitchingReport():
         
 
     def fix_labels(self, mylabels, tooclose=0.1, sepfactor=2):
+        """helper function used to fix the labels in plot_usage_pies whenever they get too close and overlap"""
         vecs = np.zeros((len(mylabels), len(mylabels), 2))
         dists = np.zeros((len(mylabels), len(mylabels)))
         for i in range(0, len(mylabels)-1):
@@ -312,7 +322,7 @@ class PitchingReport():
                     mylabels[j].set_y(b[1] - sepfactor*vecs[i,j,1])
 
     def plot_usage_pies(self, df: pd.DataFrame, ax: Axes, fontsize=10):
-        
+        """plots usage rates for behind, even, and head against lhb and rbh"""    
         df_usages = self.find_usages(df)
         
         gs = gridspec.GridSpecFromSubplotSpec(2, 3, subplot_spec=ax.get_subplotspec(), 
@@ -342,7 +352,7 @@ class PitchingReport():
                     index=filtered_data['pitch_type'].values
                 )
                 
-                colors = [config.pitch_colors[pitch]['color'] for pitch in data.index]
+                colors = [self.PITCH_COLORS[pitch]['color'] for pitch in data.index]
             
 
                 wedges, texts, autotexts = ax_sub.pie(
@@ -371,6 +381,7 @@ class PitchingReport():
         ax.axis('off')
 
     def add_zone_and_plate(self, ax):
+        """adds the zone and home plate patches"""
         zone_width = 17 / 12
         zone_height = 24 / 12
         
@@ -394,6 +405,7 @@ class PitchingReport():
         ax.axis('off')
 
     def get_pitch_groupings(self, df: pd.DataFrame):
+        """gets metrics based the specific pitch to see how well that pitch plays"""
         df_group = df.groupby(['pitch_type']).agg(
             pitch_count = ('pitch_type', 'count'),
             rel_speed = ('release_speed', 'mean'),
@@ -453,6 +465,7 @@ class PitchingReport():
         return df_formatted
 
     def plot_pitch_table(self, df, ax):
+        """plots a table of every unique pitch the player threw and how well it did compared to average"""
         df = self.get_pitch_groupings(df)
 
         column_mapping = {
@@ -511,8 +524,8 @@ class PitchingReport():
         
         # Add color to pitch type cells
         for idx, pitch in enumerate(df['pitch_type']):
-            if pitch in config.pitch_colors:
-                table_plot[(idx+1, 0)].set_facecolor(config.pitch_colors[pitch]['color'])
+            if pitch in self.PITCH_COLORS:
+                table_plot[(idx+1, 0)].set_facecolor(self.PITCH_COLORS[pitch]['color'])
         
         # Format table
         table_plot.auto_set_font_size(True)
@@ -633,7 +646,7 @@ class PitchingReport():
                 width=std_x * 2,  # 1 std on each side
                 height=std_z * 2,
                 fill=False,
-                edgecolor=config.pitch_colors[pitch]['color'],
+                edgecolor=self.PITCH_COLORS[pitch]['color'],
                 linewidth=2,
                 alpha=0.8,
                 zorder=5
@@ -653,7 +666,7 @@ class PitchingReport():
             circle = Circle(
                 (center_x, center_z),
                 radius=radius,
-                facecolor=config.pitch_colors[pitch]['color'],
+                facecolor=self.PITCH_COLORS[pitch]['color'],
                 edgecolor='black',
                 linewidth=1,
                 alpha=0.7,
@@ -667,11 +680,9 @@ class PitchingReport():
         ax.set_title(f'{total_pitches} Pitches vs {hand_label}', fontsize=10)
 
     def construct_pitching_summary(self, pitcher_id, start_date='2025-03-27', end_date='2025-10-01'):
-
+        """assembles the entire pitching summary"""
         df_player = pyb.statcast_pitcher(start_date, end_date, pitcher_id)
         df_player = self.process_df(df_player)
-
-        handedness = df_player['p_throws'].iloc[0]
 
         fig = plt.figure(figsize=(self.REPORT_WIDTH, self.REPORT_HEIGHT), dpi=300)
 
@@ -700,11 +711,10 @@ class PitchingReport():
 
         # assign the axis values to their plots
         self.plot_header(pitcher_id, ax_name)
-        self.plot_season_row(pitcher_id, 2025, ax_game_table)
+        self.plot_stat_line(pitcher_id, 2025, ax_game_table)
         self.plot_short_form(df_player, ax_short_form)
         self.plot_usage_pies(df_player, ax_usages)
         self.plot_pitch_table(df_player, ax_pitch_table)
-        # pitch_table_color(df_player, df_avg, handedness, ax_pitch_table, 7)
         self.plot_pitch_locations(df_player, ax_loc_left, 'L')
         self.plot_pitch_locations(df_player, ax_loc_right, 'R')
 
