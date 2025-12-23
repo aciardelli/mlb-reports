@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from matplotlib.axes import Axes
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -17,7 +18,7 @@ class Report():
     REPORT_WIDTH = 8.5
     REPORT_HEIGHT = 11
 
-    def process_df_base(self, df):
+    def process_df_base(self, df: pd.DataFrame):
         """clean the dataframe and setup new metrics for use"""
         swing_desc = ['foul_bunt','foul','hit_into_play','swinging_strike', 'foul_tip',
                     'swinging_strike_blocked','missed_bunt','bunt_foul_tip']
@@ -36,11 +37,11 @@ class Report():
         df['pfx_x'] = df['pfx_x'] * 12
         return df[df['pitch_type'].notna() & (df['pitch_type'] != 'PO')]
 
-    def get_headshot(self, pitcher_id):
+    def get_headshot(self, mlb_player_id: int):
         """gets player headshot from mlbstatic"""
         url = f'https://img.mlbstatic.com/mlb-photos/image/'\
               f'upload/d_people:generic:headshot:67:current.png'\
-              f'/w_640,q_auto:best/v1/people/{pitcher_id}/headshot/silo/current.png'
+              f'/w_640,q_auto:best/v1/people/{mlb_player_id}/headshot/silo/current.png'
         
         response = requests.get(url)
         
@@ -48,9 +49,9 @@ class Report():
 
         return img
 
-    def get_bio(self, pitcher_id):
+    def get_bio(self, mlbam_player_id: int):
         """gets player information from mlb stats api"""
-        url = f"https://statsapi.mlb.com/api/v1/people?personIds={pitcher_id}&hydrate=currentTeam"
+        url = f"https://statsapi.mlb.com/api/v1/people?personIds={mlbam_player_id}&hydrate=currentTeam"
 
         data = requests.get(url).json()
 
@@ -70,7 +71,7 @@ class Report():
             "team_link": team_link
         }
 
-    def get_logo(self, team_link):
+    def get_logo(self, team_link: str):
         """gets the logo image for the team the player plays for"""
         url_team = 'https://statsapi.mlb.com/' + team_link 
         data_team = requests.get(url_team).json()
@@ -83,10 +84,10 @@ class Report():
 
         return img
 
-    def plot_header(self, pitcher_id: str, ax: Axes):
+    def plot_header(self, mlbam_player_id: int, ax: Axes):
         """constructs the header to be plotted"""
-        bio = self.get_bio(pitcher_id)
-        headshot = self.get_headshot(pitcher_id)
+        bio = self.get_bio(mlbam_player_id)
+        headshot = self.get_headshot(mlbam_player_id)
         logo = self.get_logo(bio['team_link'])
 
         ax.set_facecolor('#1a1a2e')  # dark navy background
@@ -143,7 +144,7 @@ class Report():
                     mylabels[j].set_x(b[0] - sepfactor*vecs[i,j,0])
                     mylabels[j].set_y(b[1] - sepfactor*vecs[i,j,1])
 
-    def get_color(self, z_score, invert=False, vmin=-3, vmax=3, cmap='coolwarm'):
+    def get_color(self, z_score: float, invert=False, vmin=-3, vmax=3, cmap='coolwarm'):
         """returns the color given the z score"""
         z = max(vmin, min(vmax, z_score))
         
