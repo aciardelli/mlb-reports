@@ -2,17 +2,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle, Polygon, Ellipse, Circle
 from matplotlib.axes import Axes
-from matplotlib.figure import Figure
-import matplotlib.colors as mcolors
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import seaborn as sns
 import pybaseball as pyb
 import requests
 import config
 from Report import Report
+from typing import Dict
 
 class PitchingReport(Report):
     def process_df(self, df: pd.DataFrame):
@@ -26,19 +23,17 @@ class PitchingReport(Report):
 
         return df
 
-    def get_fangraphs_pitching_stats(self, season: int):
+    def get_fangraphs_pitching_stats(self, fangraphs_pitcher_id: int, season: int):
         """fetches fangraphs pitching stats and returns them as a df"""
-        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=pit&lg=all&season={season}&season1={season}&ind=0&qual=0&type=8&month=0&pageitems=500000"
+        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=pit&lg=all&season={season}&season1={season}&player={fangraphs_pitcher_id}&ind=0&qual=0&type=8&month=0&pageitems=500000"
         data = requests.get(url).json()
         df = pd.DataFrame(data=data['data'])
         return df
 
-    def plot_stat_line(self, pitcher_id: int, season: int, ax: Axes):
+    def plot_stat_line(self, fangraphs_pitcher_id: int, season: int, ax: Axes):
         """plots the statline pulled from fangraphs for the given date range"""
         stats = ['IP', 'WHIP', 'ERA', 'FIP', 'K%', 'BB%', 'K-BB%']
-        df_fangraphs = self.get_fangraphs_pitching_stats(season = season)
-
-        df_fangraphs_pitcher = df_fangraphs[df_fangraphs['xMLBAMID'] == pitcher_id][stats].reset_index(drop=True)
+        df_fangraphs_pitcher = self.get_fangraphs_pitching_stats(fangraphs_pitcher_id, season = season)
 
         df_fangraphs_pitcher['K%'] *= 100
         df_fangraphs_pitcher['BB%'] *= 100
@@ -534,9 +529,13 @@ class PitchingReport(Report):
         hand_label = 'RHB' if batter_hand == 'R' else 'LHB'
         ax.set_title(f'{total_pitches} Pitches vs {hand_label}', fontsize=10)
 
-    def construct_pitching_summary(self, pitcher_id, start_date='2025-03-27', end_date='2025-10-01'):
+    def construct_pitching_summary(self, pitcher_ids: Dict, start_date='2025-03-27', end_date='2025-10-01'):
+
+        mlbam_pitcher_id = pitcher_ids["mlbam_id"] 
+        fangraphs_pitcher_id = pitcher_ids["fangraphs_id"]
+
         """assembles the entire pitching summary"""
-        df_player = pyb.statcast_pitcher(start_date, end_date, pitcher_id)
+        df_player = pyb.statcast_pitcher(start_date, end_date, mlbam_pitcher_id)
         df_player = self.process_df(df_player)
 
         fig = plt.figure(figsize=(self.REPORT_WIDTH, self.REPORT_HEIGHT), dpi=300)
@@ -565,8 +564,8 @@ class PitchingReport(Report):
         ax_loc_right = fig.add_subplot(gs[5, 2:3])
 
         # assign the axis values to their plots
-        self.plot_header(pitcher_id, ax_name)
-        self.plot_stat_line(pitcher_id, 2025, ax_game_table)
+        self.plot_header(mlbam_pitcher_id, ax_name)
+        self.plot_stat_line(fangraphs_pitcher_id, 2025, ax_game_table)
         self.plot_short_form(df_player, ax_short_form)
         self.plot_usage_pies(df_player, ax_usages)
         self.plot_pitch_table(df_player, ax_pitch_table)

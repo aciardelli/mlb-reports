@@ -21,6 +21,16 @@ report_type = st.selectbox(
     placeholder="Select a report type"
 )
 
+start_date = st.date_input(
+    "Start Date",
+    "2025-03-27",
+)
+
+end_date = st.date_input(
+    "End Date",
+    "2025-10-01",
+)
+
 if report_type == 'Pitching':
     if df_pitcher_names is None:
         df_pitcher_names = get_pitcher_names()
@@ -44,9 +54,15 @@ if report_type == 'Batting':
     )
 
 if report_type == 'Pitching' and player_name:
-    player_id = df_pitcher_names[df_pitcher_names['PlayerName'] == player_name]['xMLBAMID'].values[0]
+    mlbam_player_id = df_pitcher_names[df_pitcher_names['PlayerName'] == player_name]['xMLBAMID'].values[0]
+    fangraphs_player_id = df_pitcher_names[df_pitcher_names['PlayerName'] == player_name]['FangraphsID'].values[0]
 
-    fig = pr.construct_pitching_summary(player_id)
+    player_ids = {
+        "mlbam_id": mlbam_player_id,
+        "fangraphs_id": fangraphs_player_id
+    }
+
+    fig = pr.construct_pitching_summary(player_ids)
     st.pyplot(fig)
 
     # create pdf
@@ -64,9 +80,16 @@ if report_type == 'Pitching' and player_name:
     )
 
 if report_type == 'Batting' and player_name:
-    player_id = df_batter_names[df_batter_names['PlayerName'] == player_name]['xMLBAMID'].values[0]
+    mlbam_player_id = df_batter_names[df_batter_names['PlayerName'] == player_name]['xMLBAMID'].values[0]
+    fangraphs_player_id = df_pitcher_names[df_pitcher_names['PlayerName'] == player_name]['FangraphsID'].values[0]
 
-    fig = br.construct_batting_summary(player_id)
+
+    player_ids = {
+        "mlbam_id": mlbam_player_id,
+        "fangraphs_id": fangraphs_player_id
+    }
+
+    fig = br.construct_batting_summary(player_ids)
     st.pyplot(fig)
 
     # create pdf

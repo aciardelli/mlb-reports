@@ -3,7 +3,7 @@ import pandas as pd
 from matplotlib.axes import Axes
 from PIL import Image
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Polygon, Ellipse, Circle
+from matplotlib.patches import Rectangle
 import matplotlib.colors as mcolors
 from io import BytesIO
 import requests
@@ -37,11 +37,11 @@ class Report():
         df['pfx_x'] = df['pfx_x'] * 12
         return df[df['pitch_type'].notna() & (df['pitch_type'] != 'PO')]
 
-    def get_headshot(self, mlb_player_id: int):
+    def get_headshot(self, mlbam_player_id: int):
         """gets player headshot from mlbstatic"""
         url = f'https://img.mlbstatic.com/mlb-photos/image/'\
               f'upload/d_people:generic:headshot:67:current.png'\
-              f'/w_640,q_auto:best/v1/people/{mlb_player_id}/headshot/silo/current.png'
+              f'/w_640,q_auto:best/v1/people/{mlbam_player_id}/headshot/silo/current.png'
         
         response = requests.get(url)
         

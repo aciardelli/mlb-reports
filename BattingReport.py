@@ -2,15 +2,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from matplotlib.lines import Line2D
-from matplotlib.patches import Rectangle, Polygon, Ellipse, Circle
 from matplotlib.axes import Axes
 import seaborn as sns
 import pybaseball as pyb
-from PIL import Image
 import requests
-from io import BytesIO
 from Report import Report
+from typing import Dict
 
 class BattingReport(Report):
     def process_df(self, df: pd.DataFrame):
@@ -36,34 +33,31 @@ class BattingReport(Report):
 
         return df
 
-    def get_fangraphs_batting_stats(self, batter_id: int, season: int):
+    def get_fangraphs_batting_stats(self, fangraphs_batter_id: int, season: int):
         # month = 13 is vs lhp
-        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&ind=0&qual=0&type=8&month=13&pageitems=500000"
+        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&player={fangraphs_batter_id}&ind=0&qual=0&type=8&month=13&pageitems=500000"
         data = requests.get(url).json()
         df_left = pd.DataFrame(data=data['data'])
-        player_left = df_left[df_left['xMLBAMID'] == batter_id]
-        player_left['Split'] = 'vs L'
+        df_left['Split'] = 'vs L'
 
         # month = 14 is vs rhp
-        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&ind=0&qual=0&type=8&month=14&pageitems=500000"
+        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&player={fangraphs_batter_id}&ind=0&qual=0&type=8&month=14&pageitems=500000"
         data = requests.get(url).json()
         df_right = pd.DataFrame(data=data['data'])
-        player_right = df_right[df_right['xMLBAMID'] == batter_id]
-        player_right['Split'] = 'vs R'
+        df_right['Split'] = 'vs R'
 
-        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&ind=0&qual=0&type=8&month=0&pageitems=500000"
+        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&player={fangraphs_batter_id}&ind=0&qual=0&type=8&month=0&pageitems=500000"
         data = requests.get(url).json()
         df_all = pd.DataFrame(data=data['data'])
-        player_all = df_all[df_all['xMLBAMID'] == batter_id]
-        player_all['Split'] = 'All'
+        df_all['Split'] = 'All'
 
-        df_fangraphs_batter = pd.concat((df for df in [player_left, player_right, player_all] if not df.empty), axis=0)
+        df_fangraphs_batter = pd.concat((df for df in [df_left, df_right, df_all] if not df.empty), axis=0)
         
         return df_fangraphs_batter
 
-    def plot_season_row(self, batter_id: int, season: int, ax: Axes):
+    def plot_stat_line(self, fangraphs_batter_id: int, season: int, ax: Axes):
         stats = ['Split', 'PA', 'AVG', 'OBP', 'SLG', 'OPS', 'K%', 'BB%', 'wRC+', 'HR']
-        df_fangraphs_batter = self.get_fangraphs_batting_stats(batter_id, season = season)
+        df_fangraphs_batter = self.get_fangraphs_batting_stats(fangraphs_batter_id, season = season)
 
         df_fangraphs_batter['K%'] *= 100
         df_fangraphs_batter['BB%'] *= 100
@@ -284,9 +278,12 @@ class BattingReport(Report):
         ax.set(xlabel=None, ylabel=None)
         ax.legend(loc='upper right', fontsize=8)
 
-    def construct_batting_summary(self, batter_id: int, start_date='2025-03-27', end_date='2025-10-01'):
+    def construct_batting_summary(self, batter_ids: Dict, start_date='2025-03-27', end_date='2025-10-01'):
 
-        df_player = pyb.statcast_batter(start_date, end_date, batter_id)
+        mlbam_batter_id = batter_ids["mlbam_id"] 
+        fangraphs_batter_id = batter_ids["fangraphs_id"]
+
+        df_player = pyb.statcast_batter(start_date, end_date, mlbam_batter_id)
         df_player = self.process_df(df_player)
         
         fig = plt.figure(figsize=(8.5, 11), dpi=300)
@@ -322,12 +319,12 @@ class BattingReport(Report):
         ax_monthly_xwoba = fig.add_subplot(gs[5, 1:3])
 
         # assign the axis values to their plots
-        self.plot_header(batter_id, ax_name)
-        self.plot_bat_speed_dist(df_player, batter_id, ax_bat_speed_dist)
-        self.plot_launch_angle_dist(df_player, batter_id, ax_launch_angle_dist)
-        self.plot_season_row(batter_id, 2025, ax_game_table)
+        self.plot_header(mlbam_batter_id, ax_name)
+        self.plot_stat_line(fangraphs_batter_id, 2025, ax_game_table)
+        self.plot_bat_speed_dist(df_player, mlbam_batter_id, ax_bat_speed_dist)
+        self.plot_launch_angle_dist(df_player, mlbam_batter_id, ax_launch_angle_dist)
         self.plot_pitch_table(df_player, ax_pitch_table)
-        self.plot_xwoba_by_month(df_player, batter_id, ax_monthly_xwoba)
+        self.plot_xwoba_by_month(df_player, mlbam_batter_id, ax_monthly_xwoba)
 
         # add footer text
         ax_footer.text(0.25, 0.5, 'Made by Anthony Ciardelli', ha='center', va='center', fontsize=10)
