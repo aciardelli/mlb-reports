@@ -55,7 +55,7 @@ if report_type == 'Batting':
 
 if report_type == 'Pitching' and player_name:
     mlbam_player_id = df_pitcher_names[df_pitcher_names['PlayerName'] == player_name]['xMLBAMID'].values[0]
-    fangraphs_player_id = df_pitcher_names[df_pitcher_names['PlayerName'] == player_name]['FangraphsID'].values[0]
+    fangraphs_player_id = df_pitcher_names[df_pitcher_names['PlayerName'] == player_name]['playerid'].values[0]
 
     player_ids = {
         "mlbam_id": mlbam_player_id,
@@ -81,7 +81,7 @@ if report_type == 'Pitching' and player_name:
 
 if report_type == 'Batting' and player_name:
     mlbam_player_id = df_batter_names[df_batter_names['PlayerName'] == player_name]['xMLBAMID'].values[0]
-    fangraphs_player_id = df_pitcher_names[df_pitcher_names['PlayerName'] == player_name]['FangraphsID'].values[0]
+    fangraphs_player_id = df_batter_names[df_batter_names['PlayerName'] == player_name]['playerid'].values[0]
 
 
     player_ids = {

@@ -10,6 +10,56 @@ from Report import Report
 from typing import Dict
 
 class BattingReport(Report):
+
+    def construct_batting_summary(self, batter_ids: Dict, start_date='2025-03-27', end_date='2025-10-01'):
+
+        mlbam_batter_id = batter_ids["mlbam_id"] 
+        fangraphs_batter_id = batter_ids["fangraphs_id"]
+
+        df_player = pyb.statcast_batter(start_date, end_date, mlbam_batter_id)
+        df_player = self.process_df(df_player)
+        
+        fig = plt.figure(figsize=(8.5, 11), dpi=300)
+
+
+        gs = gridspec.GridSpec(7, 4,
+                            height_ratios=[0.25,12,12,20,32,24,3],  # sum to 110
+                            width_ratios=[0.25, 41.5, 41.5, 0.25], # sum to 85
+        )
+
+        # create margins along the side
+        ax_header = fig.add_subplot(gs[0, 1:3])
+        ax_left = fig.add_subplot(gs[:, 0])
+        ax_right = fig.add_subplot(gs[:, -1])
+        ax_footer = fig.add_subplot(gs[-1, 1:3])
+
+        # turn axis values off
+        for ax in [ax_header, ax_left, ax_right, ax_footer]:
+            ax.axis('off')
+        
+        ax_header = fig.add_subplot(gs[1, 1:3])
+        ax_stat_line = fig.add_subplot(gs[2, 1:3])
+        ax_bat_speed_dist = fig.add_subplot(gs[3, 1:2])
+        ax_launch_angle_dist = fig.add_subplot(gs[3, 2:3])
+        ax_pitch_table = fig.add_subplot(gs[4, 1:3])
+        ax_monthly_xwoba = fig.add_subplot(gs[5, 1:3])
+
+        # assign the axis values to their plots
+        self.plot_header(mlbam_batter_id, ax_header)
+        self.plot_stat_line(fangraphs_batter_id, 2025, ax_stat_line)
+        self.plot_bat_speed_dist(df_player, mlbam_batter_id, ax_bat_speed_dist)
+        self.plot_launch_angle_dist(df_player, mlbam_batter_id, ax_launch_angle_dist)
+        self.plot_pitch_table(df_player, ax_pitch_table)
+        self.plot_xwoba_by_month(df_player, ax_monthly_xwoba)
+
+        # add footer text
+        ax_footer.text(0.25, 0.5, 'Made by Anthony Ciardelli', ha='center', va='center', fontsize=10)
+        ax_footer.text(0.75, 0.5, 'Data from MLB and Fangraphs', ha='center', va='center', fontsize=10)
+
+        fig.tight_layout()
+
+        return fig
+
     def process_df(self, df: pd.DataFrame):
         df = self.process_df_base(df)
 
@@ -35,18 +85,18 @@ class BattingReport(Report):
 
     def get_fangraphs_batting_stats(self, fangraphs_batter_id: int, season: int):
         # month = 13 is vs lhp
-        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&player={fangraphs_batter_id}&ind=0&qual=0&type=8&month=13&pageitems=500000"
+        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&players={fangraphs_batter_id}&ind=0&qual=0&type=8&month=13&pageitems=500000"
         data = requests.get(url).json()
         df_left = pd.DataFrame(data=data['data'])
         df_left['Split'] = 'vs L'
 
         # month = 14 is vs rhp
-        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&player={fangraphs_batter_id}&ind=0&qual=0&type=8&month=14&pageitems=500000"
+        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&players={fangraphs_batter_id}&ind=0&qual=0&type=8&month=14&pageitems=500000"
         data = requests.get(url).json()
         df_right = pd.DataFrame(data=data['data'])
         df_right['Split'] = 'vs R'
 
-        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&player={fangraphs_batter_id}&ind=0&qual=0&type=8&month=0&pageitems=500000"
+        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&season={season}&season1={season}&players={fangraphs_batter_id}&ind=0&qual=0&type=8&month=0&pageitems=500000"
         data = requests.get(url).json()
         df_all = pd.DataFrame(data=data['data'])
         df_all['Split'] = 'All'
@@ -90,7 +140,7 @@ class BattingReport(Report):
         for col_idx in range(10):
             header_cell = table_fg[0, col_idx]
             header_cell.get_text().set_weight('bold')
-            header_cell.set_facecolor("#1a1a2e")
+            header_cell.set_facecolor(self.COL_HEADING_COLOR)
             header_cell.get_text().set_color('#FFF')
             header_cell.set_edgecolor('none')
         
@@ -198,47 +248,27 @@ class BattingReport(Report):
         column_mapping = {
             'pitch_type': 'PitchType',
             'pitch_usage': 'Usage',
-            'exit_velo': 'AvgEV',
-            'ev90': 'EV90',
-            'xwoba': 'xwOBA',
             'zone_swing_rate': 'Z-Swing%',
-            'zone_whiff_rate': 'Z-Whiff%',
             'zone_contact_rate': 'Z-Con%',
+            # add o contact
             'chase_rate': 'Chase%',
             'whiff_rate': 'Whiff%',
-            'SEAGER': 'SEAGER',
-            'hard_hit_rate': 'HardHit%'
+            # add la sweet spot
+            'hard_hit_rate': 'HardHit%',
+            'exit_velo': 'AvgEV',
+            'ev90': 'EV90',
+            'xwoba': 'xwOBA'
         }
 
         display_df = df.copy()
         display_df.columns = [column_mapping.get(col, col) for col in display_df.columns]
-        
-        # Define the columns we want to display in order
-        cols = [
-            'PitchType',
-            'Usage',
-            'Z-Swing%',
-            'Z-Con%',
-            'Chase%',
-            'Whiff%',
-            # 'SEAGER',
-            'AvgEV',
-            'EV90',
-            'HardHit%',
-            'xwOBA'
-        ]
-        
-        # Select only those columns in the right order
-        display_df = display_df[[col for col in cols if col in display_df.columns]]
-        
-        # Calculate column widths
+        display_df = display_df[[col for _, col in column_mapping.items() if col in display_df.columns]]
+
         colWidths = [1.5] + [1] * (len(display_df.columns) - 1)
         
-        # Create the table
         table_plot = ax.table(cellText=display_df.values,
                              colLabels=display_df.columns,
                              cellLoc='center', 
-                            #  bbox=[0, -0.1, 1, 1],
                              bbox=[0, 0, 1, 1],
                              colWidths=colWidths)
         
@@ -251,9 +281,17 @@ class BattingReport(Report):
         table_plot.auto_set_font_size(True)
         table_plot.scale(1, 0.5)
 
+        # apply color
+        for col_idx in range(len(column_mapping)):
+            header_cell = table_plot[0, col_idx]
+            header_cell.get_text().set_weight('bold')
+            header_cell.set_facecolor(self.COL_HEADING_COLOR)
+            header_cell.get_text().set_color('#FFF')
+            header_cell.set_edgecolor('none')
+
         ax.axis('off')
 
-    def plot_xwoba_by_month(self, df: pd.DataFrame, batter_id: int, ax: Axes):
+    def plot_xwoba_by_month(self, df: pd.DataFrame, ax: Axes):
         df_monthly = df.groupby(pd.to_datetime(df['game_date']).dt.month)['estimated_woba_using_speedangle'].mean()
         
         sns.lineplot(data=df_monthly, ax=ax, marker='o', markersize=8, linewidth=2, color='steelblue')
@@ -275,61 +313,6 @@ class BattingReport(Report):
         ax.set_ylim(0, .6)
         ax.set_xlim(2.5, 9.5)
         ax.set_title("xwOBA by Month", fontweight='bold')
-        ax.set(xlabel=None, ylabel=None)
+        ax.set(xlabel=None, ylabel=None, yticklabels=[])
         ax.legend(loc='upper right', fontsize=8)
 
-    def construct_batting_summary(self, batter_ids: Dict, start_date='2025-03-27', end_date='2025-10-01'):
-
-        mlbam_batter_id = batter_ids["mlbam_id"] 
-        fangraphs_batter_id = batter_ids["fangraphs_id"]
-
-        df_player = pyb.statcast_batter(start_date, end_date, mlbam_batter_id)
-        df_player = self.process_df(df_player)
-        
-        fig = plt.figure(figsize=(8.5, 11), dpi=300)
-
-
-        gs = gridspec.GridSpec(7, 4,
-                            height_ratios=[0.25,12,12,20,32,24,3],  # sum to 110
-                            width_ratios=[0.25, 41.5, 41.5, 0.25], # sum to 85
-        )
-
-        # create margins along the side
-        ax_header = fig.add_subplot(gs[0, 1:3])
-        ax_left = fig.add_subplot(gs[:, 0])
-        ax_right = fig.add_subplot(gs[:, -1])
-        ax_footer = fig.add_subplot(gs[-1, 1:3])
-
-        # turn axis values off
-        for ax in [ax_header, ax_left, ax_right, ax_footer]:
-            ax.axis('off')
-        
-        # header information
-        ax_name = fig.add_subplot(gs[1, 1:3])
-        
-        # game information axis
-        ax_game_table = fig.add_subplot(gs[2, 1:3])
-
-        ax_bat_speed_dist = fig.add_subplot(gs[3, 1:2])
-        ax_launch_angle_dist = fig.add_subplot(gs[3, 2:3])
-
-        # pitch by pitch table
-        ax_pitch_table = fig.add_subplot(gs[4, 1:3])
-
-        ax_monthly_xwoba = fig.add_subplot(gs[5, 1:3])
-
-        # assign the axis values to their plots
-        self.plot_header(mlbam_batter_id, ax_name)
-        self.plot_stat_line(fangraphs_batter_id, 2025, ax_game_table)
-        self.plot_bat_speed_dist(df_player, mlbam_batter_id, ax_bat_speed_dist)
-        self.plot_launch_angle_dist(df_player, mlbam_batter_id, ax_launch_angle_dist)
-        self.plot_pitch_table(df_player, ax_pitch_table)
-        self.plot_xwoba_by_month(df_player, mlbam_batter_id, ax_monthly_xwoba)
-
-        # add footer text
-        ax_footer.text(0.25, 0.5, 'Made by Anthony Ciardelli', ha='center', va='center', fontsize=10)
-        ax_footer.text(0.75, 0.5, 'Data from MLB and Fangraphs', ha='center', va='center', fontsize=10)
-
-        fig.tight_layout()
-
-        return fig

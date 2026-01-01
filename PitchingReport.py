@@ -12,6 +12,58 @@ from Report import Report
 from typing import Dict
 
 class PitchingReport(Report):
+
+    def construct_pitching_summary(self, pitcher_ids: Dict, start_date='2025-03-27', end_date='2025-10-01'):
+        """assembles the entire pitching summary"""
+
+        mlbam_pitcher_id = pitcher_ids["mlbam_id"] 
+        fangraphs_pitcher_id = pitcher_ids["fangraphs_id"]
+
+        df_player = pyb.statcast_pitcher(start_date, end_date, mlbam_pitcher_id)
+        df_player = self.process_df(df_player)
+
+        fig = plt.figure(figsize=(self.REPORT_WIDTH, self.REPORT_HEIGHT), dpi=300)
+
+
+        gs = gridspec.GridSpec(7, 4,
+                            height_ratios=[0.25,12,5,31,32,24,3],
+                            width_ratios=[0.25, 41.5, 41.5, 0.25]
+                            )
+        
+        # create margins along the side
+        ax_header = fig.add_subplot(gs[0, 1:3])
+        ax_left = fig.add_subplot(gs[:, 0])
+        ax_right = fig.add_subplot(gs[:, -1])
+        ax_footer = fig.add_subplot(gs[-1, 1:3])
+
+        for ax in [ax_header, ax_left, ax_right, ax_footer]:
+            ax.axis('off')
+        
+        ax_header = fig.add_subplot(gs[1, 1:3])
+        ax_stat_line = fig.add_subplot(gs[2, 1:3])
+        ax_short_form = fig.add_subplot(gs[3, 1:2])
+        ax_usage_pies = fig.add_subplot(gs[3, 2:3])
+        ax_pitch_table = fig.add_subplot(gs[4, 1:3])
+        ax_loc_left = fig.add_subplot(gs[5, 1:2])
+        ax_loc_right = fig.add_subplot(gs[5, 2:3])
+
+        # assign the axis values to their plots
+        self.plot_header(mlbam_pitcher_id, ax_header)
+        self.plot_stat_line(fangraphs_pitcher_id, 2025, ax_stat_line)
+        self.plot_short_form(df_player, ax_short_form)
+        self.plot_usage_pies(df_player, ax_usage_pies)
+        self.plot_pitch_table(df_player, ax_pitch_table)
+        self.plot_pitch_locations(df_player, ax_loc_left, 'L')
+        self.plot_pitch_locations(df_player, ax_loc_right, 'R')
+
+        # add footer text
+        ax_footer.text(0.25, 0.5, 'Made by Anthony Ciardelli', ha='center', va='center', fontsize=10)
+        ax_footer.text(0.75, 0.5, 'Data from MLB and Fangraphs', ha='center', va='center', fontsize=10)
+
+        fig.tight_layout()
+
+        return fig
+
     def process_df(self, df: pd.DataFrame):
         """Process the dataframe for pitching metrics"""
         df = self.process_df_base(df)
@@ -25,7 +77,7 @@ class PitchingReport(Report):
 
     def get_fangraphs_pitching_stats(self, fangraphs_pitcher_id: int, season: int):
         """fetches fangraphs pitching stats and returns them as a df"""
-        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=pit&lg=all&season={season}&season1={season}&player={fangraphs_pitcher_id}&ind=0&qual=0&type=8&month=0&pageitems=500000"
+        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=pit&lg=all&season={season}&season1={season}&players={fangraphs_pitcher_id}&ind=0&qual=0&type=8&month=0&pageitems=500000"
         data = requests.get(url).json()
         df = pd.DataFrame(data=data['data'])
         return df
@@ -38,6 +90,8 @@ class PitchingReport(Report):
         df_fangraphs_pitcher['K%'] *= 100
         df_fangraphs_pitcher['BB%'] *= 100
         df_fangraphs_pitcher['K-BB%'] *= 100
+
+        print(df_fangraphs_pitcher)
 
         format_specs = {
             'IP' : '.0f',
@@ -56,11 +110,11 @@ class PitchingReport(Report):
                 df_formatted[col] = df_formatted[col].apply(
                     lambda x: '—' if pd.isna(x) else f"{x:{fmt}}")
 
-        table_fg = ax.table(cellText=df_formatted.values, colLabels=stats, cellLoc='center',
+        table_fg = ax.table(cellText=df_formatted[stats].values, colLabels=stats, cellLoc='center',
                         bbox=[0.00, 0.0, 1, 1])
 
         invert_colors = ['WHIP', 'ERA', 'FIP', 'BB%']
-        for col_idx in range(7):
+        for col_idx in range(len(format_specs)):
             header_cell = table_fg[0, col_idx]
             stat = stats[col_idx]
             if stat not in self.FANGRAPHS_STATS.keys():
@@ -79,16 +133,16 @@ class PitchingReport(Report):
             value_cell.set_facecolor(color)
         
         # apply color
-        for col_idx in range(7):
+        for col_idx in range(len(format_specs)):
             header_cell = table_fg[0, col_idx]
             header_cell.get_text().set_weight('bold')
-            header_cell.set_facecolor("#1a1a2e")
+            header_cell.set_facecolor(self.COL_HEADING_COLOR)
             header_cell.get_text().set_color('#FFF')
             header_cell.set_edgecolor('none')
         
         ax.axis('off')
 
-    def plot_short_form(self, df: pd.DataFrame, ax: Axes, fontsize=10):
+    def plot_short_form(self, df: pd.DataFrame, ax: Axes):
         """short form movement plot of the player's pitches'"""
         sns.set_style("whitegrid")
 
@@ -133,20 +187,20 @@ class PitchingReport(Report):
         ax.axvline(x=0, color='black', linestyle='--', zorder=1)
         
         # Set title and labels
-        ax.set_title("Movement Plot", fontsize=fontsize)
+        ax.set_title("Movement Plot")
         ax.set_xlabel("")
         ax.set_ylabel("")
-        ax.tick_params(axis="both", which="major", labelsize=fontsize-2)
+        ax.tick_params(axis="both", which="major")
 
         left_patch = Rectangle((-27.5, 22.5), 10, 5, fill=False, color='black', linewidth=1)
         right_patch = Rectangle((17.5, 22.5), 10, 5, fill=False, color='black', linewidth=1)
 
         if handedness == 'L':
-            ax.text(-22.5, 25, "Arm Side", ha='center', va='center', fontsize=fontsize-2)
-            ax.text(22.5, 25, "Glove Side", ha='center', va='center', fontsize=fontsize-2)
+            ax.text(-22.5, 25, "<- Arm Side", ha='center', va='center')
+            ax.text(22.5, 25, "Glove Side ->", ha='center', va='center')
         else:
-            ax.text(-22.5, 25, "Glove Side", ha='center', va='center', fontsize=fontsize-2)
-            ax.text(22.5, 25, "Arm Side", ha='center', va='center', fontsize=fontsize-2)
+            ax.text(-22.5, 25, "<- Glove Side", ha='center', va='center')
+            ax.text(22.5, 25, "Arm Side ->", ha='center', va='center')
 
         
         ax.add_patch(left_patch)
@@ -230,30 +284,6 @@ class PitchingReport(Report):
         
         ax.axis('off')
 
-    def add_zone_and_plate(self, ax):
-        """adds the zone and home plate patches"""
-        zone_width = 17 / 12
-        zone_height = 24 / 12
-        
-        zone = Rectangle((-zone_width/2, 1.5), zone_width, zone_height, 
-                             fill=False, color='black', linewidth=2, zorder=10)
-        ax.add_patch(zone)
-        
-        plate_width = 17 / 12
-        home_plate = Polygon([
-            (-plate_width/2 + 0.2, 0.5),
-            (plate_width/2 - 0.2, 0.5),
-            (plate_width/2, 0),
-            (0, -0.3),
-            (-plate_width/2, 0.0)
-        ], closed=True, fill=False, edgecolor='black', linewidth=2, zorder=10)
-        ax.add_patch(home_plate)
-        
-        ax.set_xlim(-2, 2)
-        ax.set_ylim(-0.5, 5)
-        ax.set_aspect('equal')
-        ax.axis('off')
-
     def get_pitch_groupings(self, df: pd.DataFrame):
         """gets metrics based the specific pitch to see how well that pitch plays"""
         df_group = df.groupby(['pitch_type']).agg(
@@ -314,7 +344,7 @@ class PitchingReport(Report):
         
         return df_formatted
 
-    def plot_pitch_table(self, df, ax):
+    def plot_pitch_table(self, df: pd.DataFrame, ax: Axes):
         """plots a table of every unique pitch the player threw and how well it did compared to average"""
         df = self.get_pitch_groupings(df)
 
@@ -336,39 +366,15 @@ class PitchingReport(Report):
             'xwoba': 'xwOBA'
         }
 
-        display_df = df.copy()
-        display_df.columns = [column_mapping.get(col, col) for col in display_df.columns]
+        display_df = df[[col for col in column_mapping.keys() if col in df.columns]].copy()
+        display_df.columns = [column_mapping[col] for col in display_df.columns]
+        print(display_df)
         
-        # Define the columns we want to display in order
-        cols = [
-            'PitchType',
-            'Count',
-            'Usage',
-            'Velo',
-            'IVB',
-            'HB',
-            'Spin',
-            # 'Rel_X',
-            # 'Rel_Y',
-            'Ext',
-            'Zone%',
-            'Chase%',
-            'Whiff%',
-            'Z-Whiff%',
-            'xwOBA'
-        ]
-        
-        # Select only those columns in the right order
-        display_df = display_df[[col for col in cols if col in display_df.columns]]
-        
-        # Calculate column widths
         colWidths = [1.5] + [1] * (len(display_df.columns) - 1)
-        
-        # Create the table
+
         table_plot = ax.table(cellText=display_df.values,
                              colLabels=display_df.columns,
                              cellLoc='center', 
-                            #  bbox=[0, -0.1, 1, 1],
                              bbox=[0, 0, 1, 1],
                              colWidths=colWidths)
         
@@ -381,87 +387,42 @@ class PitchingReport(Report):
         table_plot.auto_set_font_size(True)
         table_plot.scale(1, 0.5)
 
+        index_maps = {
+            "velo": 3,
+            "spin_rate": 6,
+            "extension": 7,
+            "zone_pct": 8,
+            "chase_pct": 9,
+            "whiff_pct": 10,
+            "zone_whiff_pct": 11,
+            "xwoba": 12
+        }
+
         for row_idx in range(len(df['pitch_type'].unique())):
             # Get pitch type
             pitch_type_cell = table_plot[row_idx + 1, 0]
             pitch_type = pitch_type_cell.get_text().get_text()
-            # velo (column 3)
-            velo_mean = config.pitch_type_stats[('velo', 'mean')][pitch_type]
-            velo_std = config.pitch_type_stats[('velo', 'std')][pitch_type]
-            velo_cell = table_plot[row_idx + 1, 3]
-            velo_value = velo_cell.get_text().get_text()
-            velo_float = float(velo_value) if velo_value != '—' else np.nan
-            velo_z_score = (velo_float - velo_mean) / velo_std
-            velo_color = self.get_color(velo_z_score)
-            velo_cell.set_facecolor(velo_color)
-            # ext (column 7)
-            ext_mean = config.pitch_type_stats[('extension', 'mean')][pitch_type]
-            ext_std = config.pitch_type_stats[('extension', 'std')][pitch_type]
-            ext_cell = table_plot[row_idx + 1, 7]
-            ext_value = ext_cell.get_text().get_text()
-            ext_float = float(ext_value) if ext_value != '—' else np.nan
-            ext_z_score = (ext_float - ext_mean) / ext_std
-            ext_color = self.get_color(ext_z_score)
-            ext_cell.set_facecolor(ext_color)
-            # spin (column 6)
-            spin_mean = config.pitch_type_stats[('spin_rate', 'mean')][pitch_type]
-            spin_std = config.pitch_type_stats[('spin_rate', 'std')][pitch_type]
-            spin_cell = table_plot[row_idx + 1, 6]
-            spin_value = spin_cell.get_text().get_text()
-            spin_float = float(spin_value) if spin_value != '—' else np.nan
-            spin_z_score = (spin_float - spin_mean) / spin_std
-            spin_color = self.get_color(spin_z_score)
-            spin_cell.set_facecolor(spin_color)
-            # zone (column 8)
-            zone_mean = config.pitch_type_stats[('zone_pct', 'mean')][pitch_type]
-            zone_std = config.pitch_type_stats[('zone_pct', 'std')][pitch_type]
-            zone_cell = table_plot[row_idx + 1, 8]
-            zone_value = zone_cell.get_text().get_text()
-            zone_float = float(zone_value) if zone_value != '—' else np.nan
-            zone_z_score = (zone_float - zone_mean) / zone_std
-            zone_color = self.get_color(zone_z_score)
-            zone_cell.set_facecolor(zone_color)
-            # chase (column 9)
-            chase_mean = config.pitch_type_stats[('chase_pct', 'mean')][pitch_type]
-            chase_std = config.pitch_type_stats[('chase_pct', 'std')][pitch_type]
-            chase_cell = table_plot[row_idx + 1, 9]
-            chase_value = chase_cell.get_text().get_text()
-            chase_float = float(chase_value) if chase_value != '—' else np.nan
-            chase_z_score = (chase_float - chase_mean) / chase_std
-            chase_color = self.get_color(chase_z_score)
-            chase_cell.set_facecolor(chase_color)
-            # whiff (column 10)
-            whiff_mean = config.pitch_type_stats[('whiff_pct', 'mean')][pitch_type]
-            whiff_std = config.pitch_type_stats[('whiff_pct', 'std')][pitch_type]
-            whiff_cell = table_plot[row_idx + 1, 10]
-            whiff_value = whiff_cell.get_text().get_text()
-            whiff_float = float(whiff_value) if whiff_value != '—' else np.nan
-            whiff_z_score = (whiff_float - whiff_mean) / whiff_std
-            whiff_color = self.get_color(whiff_z_score)
-            whiff_cell.set_facecolor(whiff_color)
-            # z whiff (column 11)
-            zone_whiff_mean = config.pitch_type_stats[('zone_whiff_pct', 'mean')][pitch_type]
-            zone_whiff_std = config.pitch_type_stats[('zone_whiff_pct', 'std')][pitch_type]
-            zone_whiff_cell = table_plot[row_idx + 1, 11]
-            zone_whiff_value = zone_whiff_cell.get_text().get_text()
-            zone_whiff_float = float(zone_whiff_value) if zone_whiff_value != '—' else np.nan
-            zone_whiff_z_score = (zone_whiff_float - zone_whiff_mean) / zone_whiff_std
-            zone_whiff_color = self.get_color(zone_whiff_z_score)
-            zone_whiff_cell.set_facecolor(zone_whiff_color)
-            # xwoba (column 12)
-            xwoba_mean = config.pitch_type_stats[('xwoba', 'mean')][pitch_type]
-            xwoba_std = config.pitch_type_stats[('xwoba', 'std')][pitch_type]
-            xwoba_cell = table_plot[row_idx + 1, 12]
-            xwoba_value = xwoba_cell.get_text().get_text()
-            xwoba_float = float(xwoba_value) if xwoba_value != '—' else np.nan
-            xwoba_z_score = (xwoba_float - xwoba_mean) / xwoba_std
-            xwoba_color = self.get_color(xwoba_z_score, invert=True)
-            xwoba_cell.set_facecolor(xwoba_color)
+
+            for metric, index in index_maps.items():
+                metric_cell = table_plot[row_idx + 1, index]
+                metric_value = metric_cell.get_text().get_text()
+                metric_float = float(metric_value) if metric_value != '—' else np.nan
+
+                if metric_float != np.nan:
+                    metric_mean = config.pitch_type_stats[(metric, 'mean')][pitch_type]
+                    metric_std = config.pitch_type_stats[(metric, 'std')][pitch_type] 
+                    metric_z_score = (metric_float - metric_mean) / metric_std
+                    if metric == 'xwoba':
+                        metric_color = self.get_color(metric_z_score, invert=True)
+                    else:
+                        metric_color = self.get_color(metric_z_score)
+                    metric_cell.set_facecolor(metric_color)
+
         # apply color
-        for col_idx in range(13):
+        for col_idx in range(len(column_mapping)):
             header_cell = table_plot[0, col_idx]
             header_cell.get_text().set_weight('bold')
-            header_cell.set_facecolor("#1a1a2e")
+            header_cell.set_facecolor(self.COL_HEADING_COLOR)
             header_cell.get_text().set_color('#FFF')
             header_cell.set_edgecolor('none')
         
@@ -529,53 +490,3 @@ class PitchingReport(Report):
         hand_label = 'RHB' if batter_hand == 'R' else 'LHB'
         ax.set_title(f'{total_pitches} Pitches vs {hand_label}', fontsize=10)
 
-    def construct_pitching_summary(self, pitcher_ids: Dict, start_date='2025-03-27', end_date='2025-10-01'):
-
-        mlbam_pitcher_id = pitcher_ids["mlbam_id"] 
-        fangraphs_pitcher_id = pitcher_ids["fangraphs_id"]
-
-        """assembles the entire pitching summary"""
-        df_player = pyb.statcast_pitcher(start_date, end_date, mlbam_pitcher_id)
-        df_player = self.process_df(df_player)
-
-        fig = plt.figure(figsize=(self.REPORT_WIDTH, self.REPORT_HEIGHT), dpi=300)
-
-
-        gs = gridspec.GridSpec(7, 4,
-                            height_ratios=[0.25,12,5,31,32,24,3],
-                            width_ratios=[0.25, 41.5, 41.5, 0.25]
-                            )
-        
-        # create margins along the side
-        ax_header = fig.add_subplot(gs[0, 1:3])
-        ax_left = fig.add_subplot(gs[:, 0])
-        ax_right = fig.add_subplot(gs[:, -1])
-        ax_footer = fig.add_subplot(gs[-1, 1:3])
-
-        for ax in [ax_header, ax_left, ax_right, ax_footer]:
-            ax.axis('off')
-        
-        ax_name = fig.add_subplot(gs[1, 1:3])
-        ax_game_table = fig.add_subplot(gs[2, 1:3])
-        ax_short_form = fig.add_subplot(gs[3, 1:2])
-        ax_usages = fig.add_subplot(gs[3, 2:3])
-        ax_pitch_table = fig.add_subplot(gs[4, 1:3])
-        ax_loc_left = fig.add_subplot(gs[5, 1:2])
-        ax_loc_right = fig.add_subplot(gs[5, 2:3])
-
-        # assign the axis values to their plots
-        self.plot_header(mlbam_pitcher_id, ax_name)
-        self.plot_stat_line(fangraphs_pitcher_id, 2025, ax_game_table)
-        self.plot_short_form(df_player, ax_short_form)
-        self.plot_usage_pies(df_player, ax_usages)
-        self.plot_pitch_table(df_player, ax_pitch_table)
-        self.plot_pitch_locations(df_player, ax_loc_left, 'L')
-        self.plot_pitch_locations(df_player, ax_loc_right, 'R')
-
-        # add footer text
-        ax_footer.text(0.25, 0.5, 'Made by Anthony Ciardelli', ha='center', va='center', fontsize=10)
-        ax_footer.text(0.75, 0.5, 'Data from MLB and Fangraphs', ha='center', va='center', fontsize=10)
-
-        fig.tight_layout()
-
-        return fig

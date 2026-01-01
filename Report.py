@@ -3,7 +3,7 @@ import pandas as pd
 from matplotlib.axes import Axes
 from PIL import Image
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Polygon
 import matplotlib.colors as mcolors
 from io import BytesIO
 import requests
@@ -17,6 +17,8 @@ class Report():
 
     REPORT_WIDTH = 8.5
     REPORT_HEIGHT = 11
+
+    COL_HEADING_COLOR = '#1a1a2e'
 
     def process_df_base(self, df: pd.DataFrame):
         """clean the dataframe and setup new metrics for use"""
@@ -90,7 +92,7 @@ class Report():
         headshot = self.get_headshot(mlbam_player_id)
         logo = self.get_logo(bio['team_link'])
 
-        ax.set_facecolor('#1a1a2e')  # dark navy background
+        ax.set_facecolor(self.COL_HEADING_COLOR)
         
         # set image configs
         img_width = 0.15
@@ -124,9 +126,33 @@ class Report():
         ax.axhline(y=0.58, xmin=0.3, xmax=0.7, color='#4fc3f7', linewidth=2)
         
         rect = Rectangle((0, 0), 1, 1, transform=ax.transAxes,
-                      facecolor='#1a1a2e', zorder=-1)
+                      facecolor=self.COL_HEADING_COLOR, zorder=-1)
         ax.add_patch(rect)
         ax.axis("off")
+
+    def add_zone_and_plate(self, ax: Axes):
+        """adds the zone and home plate patches"""
+        zone_width = 17 / 12
+        zone_height = 24 / 12
+        
+        zone = Rectangle((-zone_width/2, 1.5), zone_width, zone_height, 
+                             fill=False, color='black', linewidth=2, zorder=10)
+        ax.add_patch(zone)
+        
+        plate_width = 17 / 12
+        home_plate = Polygon([
+            (-plate_width/2 + 0.2, 0.5),
+            (plate_width/2 - 0.2, 0.5),
+            (plate_width/2, 0),
+            (0, -0.3),
+            (-plate_width/2, 0.0)
+        ], closed=True, fill=False, edgecolor='black', linewidth=2, zorder=10)
+        ax.add_patch(home_plate)
+        
+        ax.set_xlim(-2, 2)
+        ax.set_ylim(-0.5, 5)
+        ax.set_aspect('equal')
+        ax.axis('off')
 
     def fix_labels(self, mylabels, tooclose=0.1, sepfactor=2):
         """helper function used to fix the labels in plot_usage_pies whenever they get too close and overlap"""
