@@ -117,11 +117,11 @@ class PitchingReport(Report):
         for col_idx in range(len(format_specs)):
             header_cell = table_fg[0, col_idx]
             stat = stats[col_idx]
-            if stat not in self.FANGRAPHS_STATS.keys():
+            if stat not in self.FANGRAPHS_PITCHING_STATS.keys():
                 continue
             x = df_fangraphs_pitcher[stat].iloc[0]
-            mean = self.FANGRAPHS_STATS[stat]['mean']
-            std = self.FANGRAPHS_STATS[stat]['std']
+            mean = self.FANGRAPHS_PITCHING_STATS[stat]['mean']
+            std = self.FANGRAPHS_PITCHING_STATS[stat]['std']
             z_score = (x - mean) / std
             value_cell = table_fg[1, col_idx]
 

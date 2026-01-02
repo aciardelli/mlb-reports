@@ -13,7 +13,8 @@ import config
 class Report():
     MLB_TEAMS = config.mlb_teams
     PITCH_COLORS = config.pitch_colors
-    FANGRAPHS_STATS = config.fangraphs_stats
+    FANGRAPHS_PITCHING_STATS = config.fangraphs_pitching_stats
+    FANGRAPHS_BATTING_STATS = config.fangraphs_batting_stats
 
     REPORT_WIDTH = 8.5
     REPORT_HEIGHT = 11

@@ -137,7 +137,26 @@ class BattingReport(Report):
                     bbox=[0.00, 0.0, 1, 1], colWidths=colWidths)
         
         # apply color
-        for col_idx in range(10):
+        invert_colors = ['K%']
+        for col_idx in range(len(format_specs)+1):
+            header_cell = table_fg[0, col_idx]
+            stat = stats[col_idx]
+            if stat not in self.FANGRAPHS_BATTING_STATS.keys():
+                continue
+            x = df_fangraphs_batter[stat].iloc[2]
+            mean = self.FANGRAPHS_BATTING_STATS[stat]['mean']
+            std = self.FANGRAPHS_BATTING_STATS[stat]['std']
+            z_score = (x - mean) / std
+            value_cell = table_fg[3, col_idx]
+
+            invert = False
+            if stat in invert_colors:
+                invert = True
+
+            color = self.get_color(z_score, invert)
+            value_cell.set_facecolor(color)
+
+        for col_idx in range(len(format_specs)+1):
             header_cell = table_fg[0, col_idx]
             header_cell.get_text().set_weight('bold')
             header_cell.set_facecolor(self.COL_HEADING_COLOR)

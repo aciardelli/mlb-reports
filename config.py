@@ -61,13 +61,23 @@ pitch_colors = {
     'UN': {'color': '#9C8975', 'name': 'Unknown'},
 }
 
-fangraphs_stats = {
+fangraphs_pitching_stats = {
     'WHIP': {'mean': 1.24, 'std': 0.19}, 
     'ERA': {'mean': 3.85, 'std': 1.17}, 
     'FIP': {'mean': 3.95, 'std': 0.87}, 
     'K%': {'mean': 23.14, 'std': 5.26}, 
     'BB%': {'mean': 8.15, 'std': 2.25}, 
     'K-BB%': {'mean': 15.0, 'std': 5.56}
+}
+
+fangraphs_batting_stats = {
+    'AVG': {'mean': 0.25, 'std': 0.03}, 
+    'OBP': {'mean': 0.32, 'std': 0.04}, 
+    'SLG': {'mean': 0.41, 'std': 0.07}, 
+    'OPS': {'mean': 0.72, 'std': 0.09}, 
+    'K%': {'mean': 22.08, 'std': 6.0}, 
+    'BB%': {'mean': 8.37, 'std': 2.95}, 
+    'wRC+': {'mean': 100.69, 'std': 25.52}
 }
 
 
