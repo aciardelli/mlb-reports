@@ -6,4 +6,3 @@ pybaseball
 requests
 Pillow
 streamlit
-altair<5
