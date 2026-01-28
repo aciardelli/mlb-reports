@@ -192,15 +192,15 @@ class PitchingReport(Report):
         ax.set_ylabel("")
         ax.tick_params(axis="both", which="major")
 
-        left_patch = Rectangle((-27.5, 22.5), 10, 5, fill=False, color='black', linewidth=1)
-        right_patch = Rectangle((17.5, 22.5), 10, 5, fill=False, color='black', linewidth=1)
+        left_patch = Rectangle((-27.5, 22.5), 15, 5, fill=False, color='black', linewidth=1)
+        right_patch = Rectangle((12.5, 22.5), 15, 5, fill=False, color='black', linewidth=1)
 
         if handedness == 'L':
-            ax.text(-22.5, 25, "<- Arm Side", ha='center', va='center')
-            ax.text(22.5, 25, "Glove Side ->", ha='center', va='center')
+            ax.text(-20, 25, "<- Arm Side", ha='center', va='center', fontsize=8, clip_on=True)
+            ax.text(20, 25, "Glove Side ->", ha='center', va='center', fontsize=8, clip_on=True)
         else:
-            ax.text(-22.5, 25, "<- Glove Side", ha='center', va='center')
-            ax.text(22.5, 25, "Arm Side ->", ha='center', va='center')
+            ax.text(-20, 25, "<- Glove Side", ha='center', va='center', fontsize=8, clip_on=True)
+            ax.text(20, 25, "Arm Side ->", ha='center', va='center', fontsize=8, clip_on=True)
 
         
         ax.add_patch(left_patch)
@@ -371,12 +371,17 @@ class PitchingReport(Report):
         print(display_df)
         
         colWidths = [1.5] + [1] * (len(display_df.columns) - 1)
+        rowHeights = [0.75] + [1] * (len(display_df))
 
         table_plot = ax.table(cellText=display_df.values,
                              colLabels=display_df.columns,
                              cellLoc='center', 
                              bbox=[0, 0, 1, 1],
                              colWidths=colWidths)
+
+        for i in range(len(display_df) + 1):
+            for j in range(len(display_df.columns)):
+                table_plot[i, j].set_height(rowHeights[i])
         
         # Add color to pitch type cells
         for idx, pitch in enumerate(df['pitch_type']):
@@ -384,7 +389,8 @@ class PitchingReport(Report):
                 table_plot[(idx+1, 0)].set_facecolor(self.PITCH_COLORS[pitch]['color'])
         
         # Format table
-        table_plot.auto_set_font_size(True)
+        table_plot.auto_set_font_size(False)
+        table_plot.set_fontsize(8)
         table_plot.scale(1, 0.5)
 
         index_maps = {

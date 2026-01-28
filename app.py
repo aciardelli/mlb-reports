@@ -21,16 +21,6 @@ report_type = st.selectbox(
     placeholder="Select a report type"
 )
 
-start_date = st.date_input(
-    "Start Date",
-    "2025-03-27",
-)
-
-end_date = st.date_input(
-    "End Date",
-    "2025-10-01",
-)
-
 if report_type == 'Pitching':
     if df_pitcher_names is None:
         df_pitcher_names = get_pitcher_names()
