@@ -5,4 +5,4 @@ seaborn
 pybaseball
 requests
 Pillow
-streamlit
+streamlit==1.53.1
