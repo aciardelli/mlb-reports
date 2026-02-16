@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from datetime import date
 from PitchingReport import PitchingReport
 from BattingReport import BattingReport
 from helpers import get_pitcher_names, get_batter_names
@@ -9,8 +10,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 pr = PitchingReport()
 br = BattingReport()
-df_batter_names = None
-df_pitcher_names = None
 
 st.title('MLB Reports')
 
@@ -21,9 +20,25 @@ report_type = st.selectbox(
     placeholder="Select a report type"
 )
 
+if report_type is not None:
+    date_mode = st.radio("Date Range", ["Season", "Custom"], horizontal=True)
+
+    if date_mode == "Season":
+        season = st.selectbox("Season", list(range(2025, 2014, -1)), index=0)
+        start_date = None
+        end_date = None
+        player_season = season
+    else:
+        col1, col2 = st.columns(2)
+        with col1:
+            start_date = st.date_input("Start Date", value=date(2025, 3, 27))
+        with col2:
+            end_date = st.date_input("End Date", value=date(2025, 10, 1))
+        season = None
+        player_season = start_date.year
+
 if report_type == 'Pitching':
-    if df_pitcher_names is None:
-        df_pitcher_names = get_pitcher_names()
+    df_pitcher_names = get_pitcher_names(season=player_season)
 
     player_name = st.selectbox(
         "Players",
@@ -33,8 +48,7 @@ if report_type == 'Pitching':
     )
 
 if report_type == 'Batting':
-    if df_batter_names is None:
-        df_batter_names = get_batter_names()
+    df_batter_names = get_batter_names(season=player_season)
 
     player_name = st.selectbox(
         "Players",
@@ -52,7 +66,11 @@ if report_type == 'Pitching' and player_name:
         "fangraphs_id": fangraphs_player_id
     }
 
-    fig = pr.construct_pitching_summary(player_ids)
+    with st.spinner("Generating pitching report..."):
+        if date_mode == "Season":
+            fig = pr.construct_pitching_summary(player_ids, start_date=f'{season}-03-01', end_date=f'{season}-11-01', season=season)
+        else:
+            fig = pr.construct_pitching_summary(player_ids, start_date=str(start_date), end_date=str(end_date))
     st.pyplot(fig)
 
     # create pdf
@@ -79,7 +97,11 @@ if report_type == 'Batting' and player_name:
         "fangraphs_id": fangraphs_player_id
     }
 
-    fig = br.construct_batting_summary(player_ids)
+    with st.spinner("Generating batting report..."):
+        if date_mode == "Season":
+            fig = br.construct_batting_summary(player_ids, start_date=f'{season}-03-01', end_date=f'{season}-11-01', season=season)
+        else:
+            fig = br.construct_batting_summary(player_ids, start_date=str(start_date), end_date=str(end_date))
     st.pyplot(fig)
 
     # create pdf

@@ -1,3 +1,36 @@
+mlb_team_colors = {
+    "AZ":  {"primary": "#A71930", "accent": "#E3D4AD"},
+    "ATH": {"primary": "#003831", "accent": "#EFB21E"},
+    "ATL": {"primary": "#13274F", "accent": "#CE1141"},
+    "BAL": {"primary": "#DF4601", "accent": "#000000"},
+    "BOS": {"primary": "#0C2340", "accent": "#BD3039"},
+    "CHC": {"primary": "#0E3386", "accent": "#CC3433"},
+    "CWS": {"primary": "#27251F", "accent": "#C4CED4"},
+    "CIN": {"primary": "#C6011F", "accent": "#000000"},
+    "CLE": {"primary": "#00385D", "accent": "#E50022"},
+    "COL": {"primary": "#33006F", "accent": "#C4CED4"},
+    "DET": {"primary": "#0C2340", "accent": "#FA4616"},
+    "HOU": {"primary": "#002D62", "accent": "#EB6E1F"},
+    "KC":  {"primary": "#004687", "accent": "#BD9B60"},
+    "LAA": {"primary": "#BA0021", "accent": "#003263"},
+    "LAD": {"primary": "#005A9C", "accent": "#EF3E42"},
+    "MIA": {"primary": "#00A3E0", "accent": "#EF3340"},
+    "MIL": {"primary": "#12284B", "accent": "#FFC52F"},
+    "MIN": {"primary": "#002B5C", "accent": "#D31145"},
+    "NYM": {"primary": "#002D72", "accent": "#FF5910"},
+    "NYY": {"primary": "#0C2340", "accent": "#C4CED4"},
+    "PHI": {"primary": "#E81828", "accent": "#002D72"},
+    "PIT": {"primary": "#27251F", "accent": "#FDB827"},
+    "SD":  {"primary": "#2F241D", "accent": "#FFC425"},
+    "SF":  {"primary": "#27251F", "accent": "#FD5A1E"},
+    "SEA": {"primary": "#0C2C56", "accent": "#005C5C"},
+    "STL": {"primary": "#C41E3A", "accent": "#0C2340"},
+    "TB":  {"primary": "#092C5C", "accent": "#8FBCE6"},
+    "TEX": {"primary": "#003278", "accent": "#C0111F"},
+    "TOR": {"primary": "#134A8E", "accent": "#1D2D5C"},
+    "WSH": {"primary": "#AB0003", "accent": "#14225A"},
+}
+
 mlb_teams = {
     "AZ": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/mlb/500/scoreboard/ari.png&h=500&w=500",
     "ATH": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/mlb/500/scoreboard/oak.png&h=500&w=500",
@@ -29,6 +62,17 @@ mlb_teams = {
     "TEX": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/mlb/500/scoreboard/tex.png&h=500&w=500",
     "TOR": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/mlb/500/scoreboard/tor.png&h=500&w=500",
     "WSH": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/mlb/500/scoreboard/wsh.png&h=500&w=500"
+}
+
+team_abb_to_stadium = {
+    'AZ': 'diamondbacks', 'ATH': 'athletics', 'ATL': 'braves', 'BAL': 'orioles',
+    'BOS': 'red_sox', 'CHC': 'cubs', 'CWS': 'white_sox', 'CIN': 'reds',
+    'CLE': 'indians', 'COL': 'rockies', 'DET': 'tigers', 'HOU': 'astros',
+    'KC': 'royals', 'LAA': 'angels', 'LAD': 'dodgers', 'MIA': 'marlins',
+    'MIL': 'brewers', 'MIN': 'twins', 'NYM': 'mets', 'NYY': 'yankees',
+    'PHI': 'phillies', 'PIT': 'pirates', 'SD': 'padres', 'SF': 'giants',
+    'SEA': 'mariners', 'STL': 'cardinals', 'TB': 'rays', 'TEX': 'rangers',
+    'TOR': 'blue_jays', 'WSH': 'nationals',
 }
 
 pitch_colors = {

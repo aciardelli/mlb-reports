@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from matplotlib.patches import Rectangle, Polygon, Ellipse, Circle
+from matplotlib.patches import Rectangle, Ellipse, Circle
 from matplotlib.axes import Axes
 import seaborn as sns
 import pybaseball as pyb
@@ -13,14 +13,18 @@ from typing import Dict
 
 class PitchingReport(Report):
 
-    def construct_pitching_summary(self, pitcher_ids: Dict, start_date='2025-03-27', end_date='2025-10-01'):
+    def construct_pitching_summary(self, pitcher_ids: Dict, start_date='2025-03-27', end_date='2025-10-01', season: int = None):
         """assembles the entire pitching summary"""
 
-        mlbam_pitcher_id = pitcher_ids["mlbam_id"] 
+        mlbam_pitcher_id = pitcher_ids["mlbam_id"]
         fangraphs_pitcher_id = pitcher_ids["fangraphs_id"]
 
         df_player = pyb.statcast_pitcher(start_date, end_date, mlbam_pitcher_id)
         df_player = self.process_df(df_player)
+
+        is_season_mode = season is not None
+        if season is None:
+            season = int(start_date[:4])
 
         fig = plt.figure(figsize=(self.REPORT_WIDTH, self.REPORT_HEIGHT), dpi=300)
 
@@ -48,8 +52,14 @@ class PitchingReport(Report):
         ax_loc_right = fig.add_subplot(gs[5, 2:3])
 
         # assign the axis values to their plots
-        self.plot_header(mlbam_pitcher_id, ax_header)
-        self.plot_stat_line(fangraphs_pitcher_id, 2025, ax_stat_line)
+        if is_season_mode:
+            self.plot_header(mlbam_pitcher_id, ax_header, season=season)
+        else:
+            self.plot_header(mlbam_pitcher_id, ax_header, start_date=start_date, end_date=end_date)
+        if is_season_mode:
+            self.plot_stat_line(fangraphs_pitcher_id, season, ax_stat_line)
+        else:
+            self.plot_stat_line(fangraphs_pitcher_id, season, ax_stat_line, start_date=start_date, end_date=end_date)
         self.plot_short_form(df_player, ax_short_form)
         self.plot_usage_pies(df_player, ax_usage_pies)
         self.plot_pitch_table(df_player, ax_pitch_table)
@@ -75,23 +85,28 @@ class PitchingReport(Report):
 
         return df
 
-    def get_fangraphs_pitching_stats(self, fangraphs_pitcher_id: int, season: int):
+    def get_fangraphs_pitching_stats(self, fangraphs_pitcher_id: int, season: int, start_date: str = None, end_date: str = None):
         """fetches fangraphs pitching stats and returns them as a df"""
-        url = f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=pit&lg=all&season={season}&season1={season}&players={fangraphs_pitcher_id}&ind=0&qual=0&type=8&month=0&pageitems=500000"
+        if start_date and end_date:
+            url = (f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=pit&lg=all"
+                   f"&season={season}&season1={season}&players={fangraphs_pitcher_id}&ind=0&qual=0&type=8"
+                   f"&month=1000&startdate={start_date}&enddate={end_date}&pageitems=500000")
+        else:
+            url = (f"https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=pit&lg=all"
+                   f"&season={season}&season1={season}&players={fangraphs_pitcher_id}&ind=0&qual=0&type=8"
+                   f"&month=0&pageitems=500000")
         data = requests.get(url).json()
         df = pd.DataFrame(data=data['data'])
         return df
 
-    def plot_stat_line(self, fangraphs_pitcher_id: int, season: int, ax: Axes):
+    def plot_stat_line(self, fangraphs_pitcher_id: int, season: int, ax: Axes, start_date: str = None, end_date: str = None):
         """plots the statline pulled from fangraphs for the given date range"""
         stats = ['IP', 'WHIP', 'ERA', 'FIP', 'K%', 'BB%', 'K-BB%']
-        df_fangraphs_pitcher = self.get_fangraphs_pitching_stats(fangraphs_pitcher_id, season = season)
+        df_fangraphs_pitcher = self.get_fangraphs_pitching_stats(fangraphs_pitcher_id, season=season, start_date=start_date, end_date=end_date)
 
         df_fangraphs_pitcher['K%'] *= 100
         df_fangraphs_pitcher['BB%'] *= 100
         df_fangraphs_pitcher['K-BB%'] *= 100
-
-        print(df_fangraphs_pitcher)
 
         format_specs = {
             'IP' : '.0f',
@@ -178,15 +193,12 @@ class PitchingReport(Report):
                         alpha=1,
                         zorder=3)
         
-        # Set axis limits
         ax.set_xlim(-27.5, 27.5)
         ax.set_ylim(-27.5, 27.5)
         
-        # Add horizontal and vertical lines
         ax.axhline(y=0, color='black', linestyle='--', zorder=1)
         ax.axvline(x=0, color='black', linestyle='--', zorder=1)
         
-        # Set title and labels
         ax.set_title("Movement Plot")
         ax.set_xlabel("")
         ax.set_ylabel("")
@@ -280,7 +292,7 @@ class PitchingReport(Report):
                 
             ax_sub.set_aspect('equal')
 
-            plt.tight_layout()
+        plt.tight_layout()
         
         ax.axis('off')
 
@@ -349,7 +361,7 @@ class PitchingReport(Report):
         df = self.get_pitch_groupings(df)
 
         column_mapping = {
-            'pitch_type': 'PitchType',
+            'pitch_type': 'Pitch',
             'pitch_count': 'Count',
             'pitch_usage': 'Usage',
             'rel_speed': 'Velo',
@@ -368,7 +380,6 @@ class PitchingReport(Report):
 
         display_df = df[[col for col in column_mapping.keys() if col in df.columns]].copy()
         display_df.columns = [column_mapping[col] for col in display_df.columns]
-        print(display_df)
         
         colWidths = [1.5] + [1] * (len(display_df.columns) - 1)
         rowHeights = [0.75] + [1] * (len(display_df))
@@ -383,12 +394,11 @@ class PitchingReport(Report):
             for j in range(len(display_df.columns)):
                 table_plot[i, j].set_height(rowHeights[i])
         
-        # Add color to pitch type cells
+        # add color to pitch type cells
         for idx, pitch in enumerate(df['pitch_type']):
             if pitch in self.PITCH_COLORS:
                 table_plot[(idx+1, 0)].set_facecolor(self.PITCH_COLORS[pitch]['color'])
         
-        # Format table
         table_plot.auto_set_font_size(False)
         table_plot.set_fontsize(8)
         table_plot.scale(1, 0.5)
@@ -412,9 +422,12 @@ class PitchingReport(Report):
             for metric, index in index_maps.items():
                 metric_cell = table_plot[row_idx + 1, index]
                 metric_value = metric_cell.get_text().get_text()
-                metric_float = float(metric_value) if metric_value != '—' else np.nan
+                if metric_value == '—':
+                    metric_cell.set_facecolor('#ffffff')
+                    continue
+                metric_float = float(metric_value)
 
-                if metric_float != np.nan:
+                if not np.isnan(metric_float):
                     metric_mean = config.pitch_type_stats[(metric, 'mean')][pitch_type]
                     metric_std = config.pitch_type_stats[(metric, 'std')][pitch_type] 
                     metric_z_score = (metric_float - metric_mean) / metric_std
