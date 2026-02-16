@@ -10,11 +10,11 @@ Metrics are color-coded: red = good and blue = bad
 
 ### Pitching Reports
 
-![Tarik Skubal Pitching Report](./assets/tarik_skubal_report.pdf)
+![Tarik Skubal Pitching Report](./assets/tarik_skubal_report.png)
 
 ### Batting Reports 
 
-![Aaron Judge Batting Report](./assets/aaron_judge_report.pdf)
+![Aaron Judge Batting Report](./assets/aaron_judge_report.png)
 
 ## Link
 
