@@ -254,10 +254,8 @@ class BattingReport(Report):
         levels = np.linspace(0.150, 0.450, 20)
 
         cntr = ax.contourf(grid_x, grid_z, v_smooth, levels=levels,
-                           cmap=self._CUSTOM_CMAP, norm=norm, extend='both', alpha=0.8)
-
-        for c in cntr.collections:
-            c.set_edgecolor("face")
+                           cmap=self._CUSTOM_CMAP, norm=norm, extend='both', alpha=0.8,
+                           antialiased=True)
 
         zone = Rectangle((zone_left, zone_bot), zone_width, zone_top - zone_bot,
                           fill=False, edgecolor='black', linewidth=2, zorder=10)
