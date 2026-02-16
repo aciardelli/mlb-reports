@@ -1,3 +1,9 @@
 # MLB Reports
 
-I wanted to make reports for the 2025 season of MLB. More features / graphics coming soon!
+## Overview
+
+I wanted to make pretty reports that had metrics worth looking at. View reports for both batters and pitchers.
+
+## Link
+
+https://mlb-reports.streamlit.app/
